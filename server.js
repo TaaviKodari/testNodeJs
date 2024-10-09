@@ -32,7 +32,12 @@ app.post('/chat', async(req, res)=>{
         });
 
         const data = await response.json();
-        console.log('Api response:',data.choices[0].message);
+
+        if(!data.choices || data.choices[0].message.length == 0){
+            throw new Error('No choices returned from API');
+        }
+
+        //console.log('Api response:',data.choices[0].message);
         
         const reply = data.choices[0].message.content;
         res.json({reply});

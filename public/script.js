@@ -10,7 +10,7 @@ async function sendMessage()
     
     if(userInput.trim() === '') return;
 
-    addMessageToChatbox('Sinä: ' + userInput);
+    addMessageToChatbox('Sinä: ' + userInput,'user-message');
     console.log(userInput);
 
     const response = await fetch('chat',{
@@ -21,6 +21,7 @@ async function sendMessage()
 
     const data = await response.json();
     console.log(data.reply);
+    addMessageToChatbox(data.reply,'bot-message');
     document.getElementById('user-input').value = '';
 }
 
