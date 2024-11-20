@@ -6,9 +6,37 @@ document.getElementById('user-input').addEventListener('keypress',function(e){
     }
 })
 
-function sendImages()
+async function sendImages()
 {
-    console.log("Kuvia lähetetty");
+    //testaan, että toimii
+    //console.log("Kuvia lähetetty");
+
+    const imageInput = document.getElementById('image-input');
+    const files = imageInput.files;
+    if(files.length === 0)
+    {
+        alert('Valitse kuvia ensin.');
+        return;
+    }
+    const formData = new FormData();
+    
+    for(let i = 0; i< files.length;i++){
+        formData.append('images',files[i])
+    }
+    //perus formDatan logitus
+   // console.log(formData);
+    //Hae form data sisältö
+    console.log(formData.getAll('images'));
+    try{
+        //muista päivittää asynciksi funtio
+        const response = await fetch('/upload-Images',{
+            method: 'POST',
+            body: formData
+        })
+    }catch(error)
+    {
+        console.error('Error:',error);
+    }
 }
 
 async function sendMessage()
