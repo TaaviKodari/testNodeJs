@@ -1,10 +1,37 @@
+let currentQuestion ='';
+let correctAnswer = '';
 document.getElementById('send-button').addEventListener('click',sendMessage);
 document.getElementById('send-images-button').addEventListener('click',sendImages);
+document.getElementById('send-answer-button').addEventListener('click',sendAnswer);
 document.getElementById('user-input').addEventListener('keypress',function(e){
     if(e.key == 'Enter'){
         sendMessage();
     }
 })
+
+async function sendAnswer() {
+    const answerInput = document.getElementById('answer-input').value;
+    if(answerInput.trim()=== '') return;
+    console.log(answerInput);
+    addMessageToChatbox('Sinä: ' + answerInput,'user-message','omaopebox');
+    try{
+        const response = await fetch('/check-answer',{
+            method:'POST',
+            headers:{
+                'Content-Type':'application/json'
+            },
+            body:JSON.stringify({user_answer:answerInput, correct_answer: correctAnswer})
+        });
+        const data = await response.json();
+        console.log(data.evaluation);
+        addMessageToChatbox('ChatGPT: ' + data.evaluation,'bot-message','omaopebox');
+    }catch(error)
+    {
+        console.log('Error:',error);
+    }
+    document.getElementById('answer-input').value = '';
+}
+
 
 async function sendImages()
 {
@@ -33,6 +60,13 @@ async function sendImages()
             method: 'POST',
             body: formData
         })
+        const data = await response.json();
+        console.log(data);
+        currentQuestion = data.question;
+        correctAnswer = data.answer;
+        console.log('Current question:'+ currentQuestion);
+        console.log('Correct answer:' + correctAnswer);
+        addMessageToChatbox('OmaOpe: ' + currentQuestion,'bot-message','omaopebox');
     }catch(error)
     {
         console.error('Error:',error);
@@ -45,7 +79,7 @@ async function sendMessage()
     
     if(userInput.trim() === '') return;
 
-    addMessageToChatbox('Sinä: ' + userInput,'user-message');
+    addMessageToChatbox('Sinä: ' + userInput,'user-message','chatbox');
     console.log(userInput);
     try{
         const response = await fetch('chat',{
@@ -56,19 +90,19 @@ async function sendMessage()
         
             const data = await response.json();
             console.log(data.reply);
-            addMessageToChatbox(data.reply,'bot-message');
+            addMessageToChatbox(data.reply,'bot-message','chatbox');
     }catch(error)
     {
         console.error("Error:", error);
-        addMessageToChatbox("Jotain meni pieleen. Yritä uudelleen myöhemmin",'bot-message');
+        addMessageToChatbox("Jotain meni pieleen. Yritä uudelleen myöhemmin",'bot-message','chatbox');
     }
     document.getElementById('user-input').value = '';
 }
 
-function addMessageToChatbox(message, className){
+function addMessageToChatbox(message, className, box){
     const messageElement = document.createElement('div');
     messageElement.classList.add('message',className);
     messageElement.textContent = message;
-    document.getElementById('chatbox').appendChild(messageElement);
+    document.getElementById(box).appendChild(messageElement);
 
 }

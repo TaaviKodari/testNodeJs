@@ -1,5 +1,5 @@
-import express  from 'express';
-import bodyParser, { json } from 'body-parser';
+import express, { response }  from 'express';
+import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import  multer from 'multer';
 import vision from '@google-cloud/vision';
@@ -22,6 +22,8 @@ const client = new vision.ImageAnnotatorClient({keyFilename:'omaope-vision.json'
 //yhdistetään kuvien tekstit
 let koealueTekstina = '';
 let context = [] //chat GPT keskustelu lista
+let currentQuestion = '' //muuttaja kysymyksen tallentamiseen
+let correctAnswer = '' //muuttuja oikean vastauksen tallentamiseen
 //chat-gpt versio:  npm install dotenv
 app.post('/chat', async(req, res)=>{
     const question = req.body.question;
@@ -88,27 +90,80 @@ app.post('/upload-Images',upload.array('images',10), async(req,res)=>{
         context = [{role:'user', content: koealueTekstina}]
         const response = await fetch('https://api.openai.com/v1/chat/completions',{
             method:'POST',
-            header:{
+            headers:{
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`  
                 },
-                body: json.stringify({
+                body: JSON.stringify({
                     model:'gpt-4o-mini',
                     messages:context.concat([
-                        {role:'user', content:'Luo yksinkertainen ja salekeä koetehtävä ja sen vastaus yllä olevasta tekstistä suomeksi. Kysy vain yksiasia kerrallaan jne...'}
+                        {role:'user', content:'Luo yksinkertainen ja salekeä koetehtävä ja sen vastaus yllä olevasta tekstistä suomeksi. Kysy vain yksiasia kerrallaan.'}
                     ]),
                     max_tokens:150
                 })
-        });
+            });
+            const data = await response.json();
+            //console.log(data);
+            //console.log('API response:', JSON.stringify(data,null,2));
+            //console.log(data.choices[0].message);
+            const responseText = data.choices[0].message.content.trim();
 
+            const [question, answer] = responseText.includes('Vastaus')
+            ?responseText.split('Vastaus:')
+            :[responseText, null];
+
+            console.log('Parsed Question:', question);
+            console.log('Parsed Answer', answer);
+
+            if(!question || !answer){
+                return res.status(400).json({error: 'Model could not generatea a calid question. Please provide a clearer text.'});
+            }
+            
+            currentQuestion = question.trim();
+            correctAnswer = answer.trim();
+//päivitetään chatgpt keskustelu kysymyksellä ja vastauksella, jotta chatgpt tietää mistä on aikasemmin keskusteltu
+            context.push({role: 'assistant',content: `Kysymys: ${currentQuestion}`});
+            context.push({role:'assistant', content:`Vastaus: ${correctAnswer}`});
+            res.json({question: currentQuestion, answer:correctAnswer});
     }catch(error)
     {
-        console.error('Error',error.message);
+        console.error('Upload-images: Error ',error.message);
         res.status(500).json({error:error.message});
     }
 });
 
-
+app.post('/check-answer',async(req,res)=>{
+ const userAnswer = req.body.user_answer;
+ console.log(userAnswer);
+ try{
+    const response = await fetch('https://api.openai.com/v1/chat/completions',{
+        method:'POST',
+        headers:{
+            'Content-Type':'application/json',
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+            model:'gpt-4o-mini',
+            messages:[
+                {role:'system', content:'Ole aina ysställinen opettaja, joka arvioi oppilaan vastauksen kohteliaaseen sävyyn'},
+                {role:'user', content:`Kysymys: ${currentQuestion}`},
+                {role:'user', content:`Oikea vastaus: ${correctAnswer}`},
+                {role:'user', content:`Opiskelijan vastaus: ${userAnswer}`},
+                {role:'user', content:`Arvioi opiskeijan vastaus asteikolla 0-10 ja anna lyhyt selitys ystävällisin ja kannustavin sanoin.`}
+            ],
+            max_tokens: 150
+        })
+    });
+    const data = await response.json();
+    //console.log('Api response: ', JSON.stringify(data));
+    const  evaluation = data.choices[0].message.content.trim();
+    console.log('Evaluation:', evaluation);
+    res.json({evaluation});
+    
+ }catch(error){
+    console.error('Virheviesti:',error.message);
+ }
+});
 
 //luetaan frontin kysymys requestista versio
 // app.post('/chat', async(req, res)=>{
@@ -127,11 +182,11 @@ app.listen(port, () =>{
 })
 
 //Pohja post kutsu.  Ei oo pakko tehdä
-app.post('/chat', async(req, res)=>{
-    try{
+// app.post('/chat', async(req, res)=>{
+//     try{
 
-    }catch(error){
-        console.log('Virheviesti:', error.message);
-        res.status(500).json({error:'internal server error'})
-    }
-})
+//     }catch(error){
+//         console.log('Virheviesti:', error.message);
+//         res.status(500).json({error:'internal server error'})
+//     }
+// })
