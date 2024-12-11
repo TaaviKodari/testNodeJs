@@ -5,6 +5,7 @@ import  multer from 'multer';
 import vision from '@google-cloud/vision';
 //roskan siivous homma
 import fs from 'fs';
+import { error } from 'console';
 dotenv.config();
 
 const app = express();
@@ -163,6 +164,58 @@ app.post('/check-answer',async(req,res)=>{
  }catch(error){
     console.error('Virheviesti:',error.message);
  }
+});
+
+app.post('/next-question',async(req,res)=>{
+    console.log('Fetching next question');
+    try{
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: context.concat([{ role: 'user', content: 'Luo toinen yksinkertainen ja selkeä koetehtävä ja sen vastaus yllä olevasta tekstistä suomeksi. Kysy vain yksi asia kerrallaan.' }]),
+              max_tokens: 150
+            })
+    });
+    //vastaanota ja käsittele api vastaus json:ksi
+    const data = await response.json();
+    console.log('API response:', JSON.stringify(data, null, 2));
+
+    if (!data.choices || data.choices.length === 0 || !data.choices[0].message || !data.choices[0].message.content) {
+      throw new Error('No valid choices returned from API');
+    } 
+
+    //Api vastauksen käsittely
+    const responseText = data.choices[0].message.content.trim();
+    console.log('Response Text:', responseText); 
+
+     const [question, answer] = responseText.includes('Vastaus:')
+      ? responseText.split('Vastaus:')
+      : [responseText, null]; 
+
+    console.log('Parsed Question:', question);
+    console.log('Parsed Answer:', answer);
+
+    if (!question || !answer) {
+      return res.status(400).json({ error: 'Model could not generate a valid question. Please provide a clearer text.' });
+    }
+
+    currentQuestion = question.trim(); // Päivitetään nykyinen kysymys
+    correctAnswer = answer.trim(); //päivitetään oikea vastaus
+
+    // Update context eli Chat GPI keskustelu with the question and answer
+    context.push({ role: 'assistant', content: `Kysymys: ${currentQuestion}` });
+    context.push({ role: 'assistant', content: `Vastaus: ${correctAnswer}` });
+
+    res.json({ question: currentQuestion, answer: correctAnswer }); 
+    }catch(error)
+    {
+        console.log(error);
+    }
 });
 
 //luetaan frontin kysymys requestista versio

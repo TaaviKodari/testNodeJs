@@ -9,6 +9,25 @@ document.getElementById('user-input').addEventListener('keypress',function(e){
     }
 })
 
+async function fechNextQuestion(){
+    try{
+      const response = await fetch('/next-question',{
+            method:'POST',
+            headers:{
+                'Content-Type':'application/json'
+            },
+           
+        });
+        const data = await response.json();
+        currentQuestion = data.question;
+        correctAnswer = data.answer;
+        addMessageToChatbox('Omaope: ' + data.question, 'bot-message', 'omaopebox');
+    }catch(error)
+    {
+        console.error('Error', error);
+    }
+}
+
 async function sendAnswer() {
     const answerInput = document.getElementById('answer-input').value;
     if(answerInput.trim()=== '') return;
@@ -25,6 +44,7 @@ async function sendAnswer() {
         const data = await response.json();
         console.log(data.evaluation);
         addMessageToChatbox('ChatGPT: ' + data.evaluation,'bot-message','omaopebox');
+        fechNextQuestion();
     }catch(error)
     {
         console.log('Error:',error);
