@@ -146,7 +146,7 @@ app.post('/check-answer',async(req,res)=>{
         body: JSON.stringify({
             model:'gpt-4o-mini',
             messages:[
-                {role:'system', content:'Ole aina ysställinen opettaja, joka arvioi oppilaan vastauksen kohteliaaseen sävyyn'},
+                {role:'system', content:'Ole aina yställinen opettaja, joka arvioi oppilaan vastauksen kohteliaaseen sävyyn'},
                 {role:'user', content:`Kysymys: ${currentQuestion}`},
                 {role:'user', content:`Oikea vastaus: ${correctAnswer}`},
                 {role:'user', content:`Opiskelijan vastaus: ${userAnswer}`},
@@ -157,7 +157,7 @@ app.post('/check-answer',async(req,res)=>{
     });
     const data = await response.json();
     //console.log('Api response: ', JSON.stringify(data));
-    const  evaluation = data.choices[0].message.content.trim();
+    const evaluation = data.choices[0].message.content.trim();
     console.log('Evaluation:', evaluation);
     res.json({evaluation});
     

@@ -111,6 +111,7 @@ async function sendMessage()
             const data = await response.json();
             console.log(data.reply);
             addMessageToChatbox(data.reply,'bot-message','chatbox');
+            //test
     }catch(error)
     {
         console.error("Error:", error);
